@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
+import mysql.connector
 
 # Set up the main application window
 root = tk.Tk()
@@ -8,12 +9,67 @@ root.title("Sixteen Queens Puzzle")
 root.geometry("800x800")
 root.resizable(False, False)
 
+
+# Set up the MySQL database connection
+def connect_to_database():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",  # Your MySQL username
+        password="",  # Your MySQL password
+        database="pdsa_2"  # Your database name
+    )
+
+
+# Function to check for duplicate entries
+def check_duplicate_entry(player_name, result):
+    db = connect_to_database()
+    cursor = db.cursor()
+
+    query = """
+    SELECT COUNT(*) FROM results WHERE player_name = %s AND result = %s
+    """
+    data = (player_name, result)
+
+    cursor.execute(query, data)
+    count = cursor.fetchone()[0]
+
+    cursor.close()
+    db.close()
+
+    return count > 0
+
+
+# Function to save the game result to the database
+def save_to_database(player_name, time_taken, result):
+    if check_duplicate_entry(player_name, result):
+        messagebox.showwarning("Duplicate Entry", "This result has already been entered.")
+        return
+
+    db = connect_to_database()
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO results (player_name, time_taken, result, date)
+    VALUES (%s, %s, %s, %s)
+    """
+    data = (player_name, time_taken, result, datetime.now())
+
+    cursor.execute(query, data)
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    messagebox.showinfo("Success", "Your result has been successfully saved.")
+
+
 # Define global variables
 start_time = None
 timer_id = None
 player_name = tk.StringVar()
 grid_values = [[tk.StringVar() for _ in range(1)] for _ in range(16)]
 selected_cells = [[None for _ in range(1)] for _ in range(16)]  # To track selected cells
+
 
 # Function to start the game
 def start_game():
@@ -28,6 +84,7 @@ def start_game():
     display_name_label.config(text=f"Player: {name}")
     start_timer()
 
+
 # Function to restart the game
 def restart_game():
     stop_timer()
@@ -40,11 +97,13 @@ def restart_game():
                 cell.config(bg='white')  # Reset cell color
     start_timer()
 
+
 # Function to quit the game
 def quit_game():
     stop_timer()
     grid_frame.pack_forget()
     name_frame.pack(fill='both', expand=True)
+
 
 # Function to handle form submission
 def submit_solution():
@@ -61,9 +120,19 @@ def submit_solution():
     if validate_puzzle_solution(solution):
         elapsed_time = datetime.now() - start_time
         minutes, seconds = divmod(int(elapsed_time.total_seconds()), 60)
-        messagebox.showinfo("Success", f"Congratulations! Your answer is correct.\nPlayer: {player_name.get()}\nTime: {minutes:02}:{seconds:02}")
+        messagebox.showinfo("Success",
+                            f"Congratulations! Your answer is correct.\nPlayer: {player_name.get()}\nTime: {minutes:02}:{seconds:02}")
+
+        # Save the result to the database
+        save_to_database(player_name.get(), f"{minutes:02}:{seconds:02}", "correct")
     else:
         messagebox.showwarning("Incorrect", "The answer is wrong.")
+
+        # Save the result to the database
+        elapsed_time = datetime.now() - start_time
+        minutes, seconds = divmod(int(elapsed_time.total_seconds()), 60)
+        save_to_database(player_name.get(), f"{minutes:02}:{seconds:02}", "incorrect")
+
 
 # Function to validate the solution
 def validate_puzzle_solution(data):
@@ -79,20 +148,13 @@ def validate_puzzle_solution(data):
                 return False
     return True
 
-# Function to show popup message based on result
-def show_popup(result):
-    if result['result'] == 'correct':
-        messagebox.showinfo("Success", "Congratulations! Your answer is correct.")
-    elif result['result'] == 'duplicate':
-        messagebox.showinfo("Duplicate", result['message'])
-    else:
-        messagebox.showwarning("Incorrect", "Your answer is incorrect. Try again.")
 
 # Function to start the timer
 def start_timer():
     global start_time, timer_id
     start_time = datetime.now()
     update_timer()
+
 
 # Function to update the timer
 def update_timer():
@@ -102,10 +164,12 @@ def update_timer():
     timer_label.config(text=f"Time: {minutes:02}:{seconds:02}")
     timer_id = root.after(1000, update_timer)
 
+
 # Function to stop the timer
 def stop_timer():
     if timer_id:
         root.after_cancel(timer_id)
+
 
 # Name input frame
 name_frame = tk.Frame(root)
@@ -143,7 +207,8 @@ grid_container.pack(pady=10)
 for i in range(16):
     row_cells = []
     for j in range(16):
-        cell = tk.Label(grid_container, text=str(j + 1), width=4, height=2, borderwidth=1, relief="solid", font=("Arial", 10))
+        cell = tk.Label(grid_container, text=str(j + 1), width=4, height=2, borderwidth=1, relief="solid",
+                        font=("Arial", 10))
         cell.grid(row=i, column=j)
         cell.bind("<Button-1>", lambda e, i=i, j=j: on_cell_click(i, j))
         row_cells.append(cell)
@@ -154,6 +219,7 @@ for i in range(16):
 
     selected_cells[i] = row_cells
 
+
 def on_cell_click(row, col):
     # Deselect previously selected cell in the row
     for cell in selected_cells[row]:
@@ -163,6 +229,7 @@ def on_cell_click(row, col):
     # Select the clicked cell
     selected_cells[row][col].config(bg='lightblue')
     grid_values[row][0].set(col + 1)
+
 
 def update_grid_from_entry(row):
     try:
@@ -176,5 +243,6 @@ def update_grid_from_entry(row):
                 cell.config(bg='white')
     except ValueError:
         pass  # Ignore if the entry is not a valid integer
+
 
 root.mainloop()

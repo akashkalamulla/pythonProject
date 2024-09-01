@@ -1,9 +1,11 @@
 import os
 import sys
-import tkinter as tk
-from tkinter import messagebox, font
 import time
+import tkinter as tk
+from tkinter import font, messagebox
+
 import mysql.connector
+
 
 def resource_path(relative_path):
     """ Get the absolute path to a resource, works for dev and for PyInstaller """
@@ -14,6 +16,7 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
 # MySQL Database connection
 def create_db_connection():
     return mysql.connector.connect(
@@ -23,9 +26,10 @@ def create_db_connection():
         database="pdsa_2"  # Ensure that the database 'pdsa_2' exists
     )
 
+
 # Custom Stack class
 class Stack:
-    def __init__(self):
+    def _init_(self):
         self.items = []
 
     def push(self, item):
@@ -47,15 +51,21 @@ class Stack:
     def size(self):
         return len(self.items)
 
-    def __str__(self):
+    def _str_(self):
         return str(self.items)
 
+
 class TowerOfHanoiGUI:
-    def __init__(self, root, num_disks, player_name):
+    def _init_(self, root, num_disks, player_name):
         self.root = root
         self.num_disks = num_disks
         self.player_name = player_name
         self.root.title("Tower of Hanoi")
+
+        # Adjust canvas height based on the number of disks (scaling for large numbers)
+        canvas_height = max(400, 20 * num_disks + 200)
+        self.canvas = tk.Canvas(self.root, width=600, height=canvas_height)
+        self.canvas.pack()
 
         # Setup the UI
         self.setup_ui()
@@ -92,12 +102,16 @@ class TowerOfHanoiGUI:
 
         # Initialize disks within the box
         self.disks = []
+        disk_height = min(20, 200 // num_disks)  # Adjust the disk height based on the number of disks
         for i in range(num_disks, 0, -1):
-            disk = self.canvas.create_rectangle(150 - i * 10,
-                                                300 - 20 * (num_disks - i + 1),
-                                                150 + i * 10,
-                                                320 - 20 * (num_disks - i + 1),
-                                                fill="blue")
+            disk_width = max(10, i * 10)  # Adjust the scaling factor as needed
+            disk = self.canvas.create_rectangle(
+                150 - disk_width,
+                300 - disk_height * (num_disks - i + 1),
+                150 + disk_width,
+                320 - disk_height * (num_disks - i + 1),
+                fill="blue"
+            )
             self.disks.append(disk)
             self.rods['A'].push(disk)
 
@@ -109,10 +123,6 @@ class TowerOfHanoiGUI:
         self.start_time = time.time()
 
     def setup_ui(self):
-        # Canvas for drawing
-        self.canvas = tk.Canvas(self.root, width=600, height=400)
-        self.canvas.pack()
-
         # Back button
         back_button = tk.Button(self.root, text="Back", command=self.back_to_menu, font=font.Font(size=10))
         back_button.pack(side=tk.LEFT, padx=10, pady=10)
@@ -158,15 +168,25 @@ class TowerOfHanoiGUI:
             return True
         top_disk = self.rods[target_rod].peek()
         return self.canvas.coords(disk)[2] - self.canvas.coords(disk)[0] < \
-               self.canvas.coords(top_disk)[2] - self.canvas.coords(top_disk)[0]
+            self.canvas.coords(top_disk)[2] - self.canvas.coords(top_disk)[0]
 
     def move_disk(self, disk, from_rod, to_rod):
         self.canvas.itemconfig(disk, fill="blue")
         self.rods[to_rod].push(disk)
 
-        x0, y0, x1, y1 = self.canvas.coords(disk)
-        new_x = self.rod_coords[to_rod][0] - (x1 - x0) / 2
-        self.canvas.coords(disk, new_x, 300 - 20 * self.rods[to_rod].size(), new_x + (x1 - x0), 320 - 20 * self.rods[to_rod].size())
+        # Calculate new position
+        disk_width = (self.canvas.coords(disk)[2] - self.canvas.coords(disk)[0]) / 2
+        new_x_center = self.rod_coords[to_rod][0]
+        new_y = 300 - min(20, 200 // self.num_disks) * self.rods[to_rod].size()
+
+        # Update disk position
+        self.canvas.coords(
+            disk,
+            new_x_center - disk_width,
+            new_y,
+            new_x_center + disk_width,
+            new_y + min(20, 200 // self.num_disks)
+        )
 
     def check_win(self):
         if self.rods['C'].size() == self.num_disks:
@@ -190,21 +210,26 @@ class TowerOfHanoiGUI:
         self.root.destroy()
         main_menu()
 
+
 def save_game_result(player_name, num_disks, num_moves, move_sequence, time_taken):
-    connection = create_db_connection()
-    cursor = connection.cursor()
+    try:
+        connection = create_db_connection()
+        cursor = connection.cursor()
 
-    query = """
-    INSERT INTO game_results (player_name, num_disks, num_moves, move_sequence, time_taken)
-    VALUES (%s, %s, %s, %s, %s)
-    """
-    data = (player_name, num_disks, num_moves, str(move_sequence), time_taken)
+        query = """
+        INSERT INTO game_results (player_name, num_disks, num_moves, move_sequence, time_taken)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        data = (player_name, num_disks, num_moves, str(move_sequence), time_taken)
 
-    cursor.execute(query, data)
-    connection.commit()
+        cursor.execute(query, data)
+        connection.commit()
 
-    cursor.close()
-    connection.close()
+        cursor.close()
+        connection.close()
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"An error occurred: {err}")
+
 
 def main_menu():
     root = tk.Tk()
@@ -222,9 +247,11 @@ def main_menu():
 
     root.mainloop()
 
+
 def start_game(root):
     root.destroy()
     name_input_screen()
+
 
 def name_input_screen():
     root = tk.Tk()
@@ -248,23 +275,24 @@ def name_input_screen():
 
     root.mainloop()
 
+
 def disk_input_screen(player_name):
     root = tk.Tk()
     root.title("Number of Disks")
     root.geometry("300x150")
 
-    tk.Label(root, text="Enter the number of disks (3-8):", font=font.Font(size=12)).pack(pady=10)
+    tk.Label(root, text="Enter the number of disks (1-15):", font=font.Font(size=12)).pack(pady=10)
     disk_entry = tk.Entry(root, font=font.Font(size=12))
     disk_entry.pack(pady=10)
 
     def submit_disks():
         try:
             num_disks = int(disk_entry.get())
-            if 3 <= num_disks <= 8:
+            if 1 <= num_disks <= 15:  # Restricting the number of disks to a maximum of 15
                 root.destroy()
                 TowerOfHanoiGUI(tk.Tk(), num_disks, player_name)
             else:
-                messagebox.showerror("Error", "Please enter a number between 3 and 8.")
+                messagebox.showerror("Error", "Please enter a number between 1 and 15.")
         except ValueError:
             messagebox.showerror("Error", "Please enter a valid number.")
 
@@ -273,5 +301,6 @@ def disk_input_screen(player_name):
 
     root.mainloop()
 
-if __name__ == "__main__":
+
+if _name_ == "_main_":
     main_menu()
