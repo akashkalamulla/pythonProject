@@ -99,6 +99,17 @@ def interpolation_search(arr, x):
             high = pos - 1
     return -1, time.time() - start_time
 
+# UI setup
+root = tk.Tk()
+root.title('Predict the Value Index Game')
+root.geometry('600x500')
+root.configure(bg='#4682b4')
+root.minsize(600, 500)
+
+# Global variables to store selected algorithm and methods
+selected_algorithm = tk.StringVar()
+methods = {}
+
 # Game logic
 def play_game():
     name = name_entry.get()
@@ -110,13 +121,7 @@ def play_game():
     start_game(name)
 
 def start_game(name):
-    for widget in root.winfo_children():
-        widget.destroy()
-
-    # Generate numbers and implement search
-    numbers = sorted(random.sample(range(1, 1000001), 5000))
-    target = random.choice(numbers)
-
+    global methods  # Declare methods as global
     methods = {
         'Binary Search': binary_search,
         'Jump Search': jump_search,
@@ -124,6 +129,30 @@ def start_game(name):
         'Fibonacci Search': fibonacci_search,
         'Interpolation Search': interpolation_search
     }
+
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    # Algorithm selection
+    tk.Label(root, text=f"Welcome, {name}!", bg='#4682b4', fg='white', font=('Arial', 16)).pack(pady=20)
+    tk.Label(root, text="Choose an algorithm to proceed:", bg='#4682b4', fg='white', font=('Arial', 14)).pack(pady=10)
+
+    selected_algorithm.set('Binary Search')  # Default value
+
+    for method in methods.keys():
+        tk.Radiobutton(root, text=method, variable=selected_algorithm, value=method, bg='#f0f8ff',
+                       font=('Arial', 14)).pack(anchor='w', padx=20, pady=5)
+
+    tk.Button(root, text='Proceed', command=lambda: start_round(name), bg='#32cd32', fg='white', font=('Arial', 14)).pack(pady=20)
+    tk.Button(root, text='Back', command=restart_game, bg='#ff4500', fg='white', font=('Arial', 14)).pack(pady=20)
+
+def start_round(name):
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    # Generate numbers and implement search
+    numbers = sorted(random.sample(range(1, 1000001), 5000))
+    target = random.choice(numbers)
 
     results = {}
     for method_name, method in methods.items():
@@ -140,7 +169,7 @@ def start_game(name):
         )
         conn.commit()
 
-    random_choices = random.sample(range(5000), 3) + [results['Binary Search'][0]]
+    random_choices = random.sample(range(5000), 3) + [results[selected_algorithm.get()][0]]
     random.shuffle(random_choices)
 
     tk.Label(root, text=f"Round Summary for {name}", bg='#4682b4', fg='white', font=('Arial', 16)).pack(pady=20)
@@ -154,28 +183,24 @@ def start_game(name):
                        font=('Arial', 14)).pack(anchor='w', padx=20, pady=5)
 
     def submit_guess():
-        if selected_index.get() == results['Binary Search'][0]:
+        correct_index = selected_index.get() == results[selected_algorithm.get()][0]
+        if correct_index:
             messagebox.showinfo('Correct!', f'Well done, {name}! You guessed the right index.')
         else:
             messagebox.showinfo('Incorrect', 'Oops! That was not the correct index.')
         restart_game()
 
     tk.Button(root, text='Submit Guess', command=submit_guess, bg='#32cd32', fg='white', font=('Arial', 14)).pack(pady=20)
+    tk.Button(root, text='Back', command=restart_game, bg='#ff4500', fg='white', font=('Arial', 14)).pack(pady=20)
 
 def restart_game():
     for widget in root.winfo_children():
         widget.destroy()
     tk.Label(root, text='Enter your name to start:', bg='#4682b4', fg='white', font=('Arial', 16)).pack(pady=20)
+    global name_entry
     name_entry = tk.Entry(root, font=('Arial', 14))
     name_entry.pack(pady=10)
     tk.Button(root, text='Start Game', command=play_game, bg='#ff4500', fg='white', font=('Arial', 14)).pack(pady=20)
-
-# UI setup
-root = tk.Tk()
-root.title('Predict the Value Index Game')
-root.geometry('600x500')
-root.configure(bg='#4682b4')
-root.minsize(600, 500)
 
 tk.Label(root, text='Welcome to Predict the Value Index Game!', bg='#4682b4', fg='white', font=('Arial', 18, 'bold')).pack(pady=20)
 tk.Label(root, text='Enter your name to start:', bg='#4682b4', fg='white', font=('Arial', 16)).pack(pady=20)
