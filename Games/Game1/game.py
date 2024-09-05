@@ -1,23 +1,8 @@
-import os
-import sys
 import time
 import tkinter as tk
 from tkinter import font, messagebox
-
 import mysql.connector
 
-
-def resource_path(relative_path):
-    """ Get the absolute path to a resource, works for dev and for PyInstaller """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
-
-
-# MySQL Database connection
 def create_db_connection():
     return mysql.connector.connect(
         host="localhost",  # Use 'localhost' if the MySQL server is running on your local machine
@@ -27,9 +12,9 @@ def create_db_connection():
     )
 
 
-# Custom Stack class
+
 class Stack:
-    def _init_(self):
+    def __init__(self):
         self.items = []
 
     def push(self, item):
@@ -51,45 +36,39 @@ class Stack:
     def size(self):
         return len(self.items)
 
-    def _str_(self):
+    def __str__(self):
         return str(self.items)
 
 
 class TowerOfHanoiGUI:
-    def _init_(self, root, num_disks, player_name):
+    def __init__(self, root, num_disks, player_name):
         self.root = root
         self.num_disks = num_disks
         self.player_name = player_name
         self.root.title("Tower of Hanoi")
 
-        # Adjust canvas height based on the number of disks (scaling for large numbers)
         canvas_height = max(400, 20 * num_disks + 200)
         self.canvas = tk.Canvas(self.root, width=600, height=canvas_height)
         self.canvas.pack()
 
-        # Setup the UI
         self.setup_ui()
 
-        # Initialize rods
         self.rods = {
             'A': Stack(),
             'B': Stack(),
             'C': Stack()
         }
 
-        # Rod locations
         self.rod_coords = {
             'A': (150, 300),
             'B': (300, 300),
             'C': (450, 300)
         }
 
-        # Draw rods and base box
         for coord in self.rod_coords.values():
             self.canvas.create_line(coord[0], 100, coord[0], 300, width=5)
         self.canvas.create_rectangle(50, 300, 550, 320, fill="gray")
 
-        # Rod labels
         rod_labels = {
             'A': "A",
             'B': "B",
@@ -100,11 +79,10 @@ class TowerOfHanoiGUI:
             label = tk.Label(self.root, text=rod_labels[rod], font=font.Font(size=12))
             label.place(x=rx - 5, y=325)
 
-        # Initialize disks within the box
         self.disks = []
-        disk_height = min(20, 200 // num_disks)  # Adjust the disk height based on the number of disks
+        disk_height = min(20, 200 // num_disks)
         for i in range(num_disks, 0, -1):
-            disk_width = max(10, i * 10)  # Adjust the scaling factor as needed
+            disk_width = max(10, i * 10)
             disk = self.canvas.create_rectangle(
                 150 - disk_width,
                 300 - disk_height * (num_disks - i + 1),
@@ -123,15 +101,12 @@ class TowerOfHanoiGUI:
         self.start_time = time.time()
 
     def setup_ui(self):
-        # Back button
         back_button = tk.Button(self.root, text="Back", command=self.back_to_menu, font=font.Font(size=10))
         back_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-        # Display player name
         player_label = tk.Label(self.root, text=f"Player: {self.player_name}", font=font.Font(size=12))
         player_label.pack(side=tk.LEFT, padx=10)
 
-        # Hint label
         self.hint_label = tk.Label(self.root, text="Hint: Move the disks from Rod A to Rod C.", font=font.Font(size=12))
         self.hint_label.pack(side=tk.TOP, pady=10)
 
@@ -302,5 +277,5 @@ def disk_input_screen(player_name):
     root.mainloop()
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main_menu()
